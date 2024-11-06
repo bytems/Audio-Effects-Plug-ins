@@ -1,15 +1,16 @@
-
 # Created by https://www.gitignore.io/api/macos,windows,visualstudio,xcode,c++,Csharp
 # Edit at https://www.gitignore.io/?templates=macos,windows,visualstudio,xcode,c++,Csharp
 
 ### JUCE ###
-Builds/
-JuceLibraryCode/
-Products/
+**/Builds
+**/JuceLibraryCode
 
 ### C++ ###
 # Prerequisites
 *.d
+
+## Hidden Files ##
+**/.DS_Store 
 
 # Compiled Object files
 *.slo
