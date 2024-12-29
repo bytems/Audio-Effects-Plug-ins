@@ -31,7 +31,7 @@ DelayAudioProcessorEditor::~DelayAudioProcessorEditor()
 void DelayAudioProcessorEditor::paint (juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll (juce::Colours::blue);
+    g.fillAll (juce::Colours::darkkhaki);
 
     g.setColour (juce::Colours::white);
     g.setFont (juce::FontOptions (40.0f));

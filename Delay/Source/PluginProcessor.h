@@ -26,10 +26,15 @@ public:
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
 
+    // Host(DAW) transports the audio data to & from the plug-in over a "bus".
+    // Leftover term from mixing consoles & how audi is routed between different parts of mixing console
    #ifndef JucePlugin_PreferredChannelConfigurations
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
    #endif
 
+    /* This is where "DSP" Digital Signal Processing happens. Plug-in's audio processing code
+     * Host will call this 100 - 1000 times a second
+     */
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     //==============================================================================
@@ -52,6 +57,9 @@ public:
     void changeProgramName (int index, const juce::String& newName) override;
 
     //==============================================================================
+    /* Used by the host to save save & restore the plug-in's paramter values.
+     * Allows user to save DAW session & then load it at a later time.
+     */
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
@@ -67,6 +75,8 @@ private:
     };
     
     Parameters params; // Tells the DelayAudioProc that it has Parameters object
-    // Juce's own Circular buffer
+    // DelayLine: Delay sound by a certain amount of time. We keep track of samples
+    // in Juce's own Circular buffer. A chunk of memory that stores samples
+    // & waits for the right moment to start outputting them
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
 };

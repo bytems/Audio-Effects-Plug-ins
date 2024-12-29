@@ -88,26 +88,27 @@ void DelayAudioProcessor::changeProgramName (int index, const juce::String& newN
 }
 
 //==============================================================================
-// This is the plug-in’s chance to get everything ready to go before it starts receiving audio. 
+// This is the plug-in’s chance to get everything ready to go before it starts receiving audio.
+// Prepare all internal resources
 void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+    // Use this method as the place to do any pre-playback initialisation that you need..
+    
+    // Prepare all parameter supporters
+    params.prepareToPlay(sampleRate);
+    params.reset();
+    
+    // Prepare DelayLine  - Need Spec & MaxDelay
     juce::dsp::ProcessSpec spec;
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = juce::uint32(samplesPerBlock);
     spec.numChannels = 2;
-    
     delayLine.prepare(spec);
     
     double numSamples = Parameters::maxDelayTime / 1000.0 * sampleRate;
     int maxDelayInSamples = int(std::ceil(numSamples));
     delayLine.setMaximumDelayInSamples(maxDelayInSamples);
     delayLine.reset();
-    
-    params.prepareToPlay(sampleRate);
-    params.reset();
-    
     //DBG(maxDelayInSamples);
 }
 
@@ -125,6 +126,7 @@ bool DelayAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) con
 void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[maybe_unused]] juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
+    float sampleRate = getSampleRate();
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
@@ -139,9 +141,7 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
     // Make sure to reset the state if your inner loop is processing the samples and the outer loop is handling the channels.
     // Alternatively, you can process the samples with the channels interleaved by keeping the same state.
     
-    params.update();
-    
-    delayLine.setDelay(48000.0f);
+    params.update(); // reads the most recent parameter values, updating target value of any smoothers
     
     //  Two ways to apply gain - Use juce::AudioBuffer function
     //buffer.applyGain(0.1f);
@@ -150,16 +150,29 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
     float* channelDataR = buffer.getWritePointer(1);
     for(int sample = 0; sample < buffer.getNumSamples(); sample++){ //  loop handling the samples
         params.smoothen();  // Smooth motion prevents zipper noise
+        
+        float delayInSamples = params.delayTime / 1000.0f * sampleRate;
+        delayLine.setDelay(delayInSamples);
+        
         // WE need to proc L & R channel at the same time so that the same smoothed param is applied
         
-        float dryL = channelDataL[sample];
+        float dryL = channelDataL[sample];    // Dry sample: What we call the unprocessed audio
         float dryR = channelDataR[sample];
         delayLine.pushSample(0, dryL);
         delayLine.pushSample(1, dryR);
-        float wetL = delayLine.popSample(0);
-        float wetR = delayLine.popSample(1);
-        channelDataL[sample] = wetL * params.gain;
-        channelDataR[sample] = params.gain;
+        float wetL = params.mix * delayLine.popSample(0);  // Wet sample: What we call processed signals
+        float wetR = params.mix * delayLine.popSample(1);
+        
+        // Mixing the delayed audio with the original dry sound is called the dry/wet mix
+        channelDataL[sample] = (wetL + dryL) * params.gain;
+        channelDataR[sample] = (wetR + dryR) * params.gain;
+        
+        /*
+            Outputting values as if they were an audio signal and looking at them using the oscilloscope
+            is a simple trick to help debug the plug-in and verify everything works as it should.
+         */
+        //channelDataL[sample] = params.delayTime / 5000.0f;  // Checks to see how delay time smoothly
+        //channelDataR[sample] = params.delayTime/ 5000.0f;   // transitions
     }
 }
 
@@ -175,6 +188,11 @@ juce::AudioProcessorEditor* DelayAudioProcessor::createEditor()
 }
 
 //==============================================================================
+/*
+    Serialize (save) the plug-in's state in the given juce::MemoryBlock
+    Serialize: Fancy word for putting data into a format which can be stored in a file.
+               Serialiazation format is encoded XML
+ */
 void DelayAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     // You should use this method to store your parameters in the memory block.
@@ -184,6 +202,9 @@ void DelayAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     //DBG(apvts.copyState().toXmlString());
 }
 
+/*
+    Deserialize (load) the plug-in's state
+ */
 void DelayAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
