@@ -41,7 +41,7 @@ public:
     float mix = 1.0f;  // % of wet mixed into dry
     
     // constants
-    static constexpr float minDelayTime = 0.1f;
+    static constexpr float minDelayTime = 5.0f;
     static constexpr float maxDelayTime = 5000.0f;   // expressed in milliseconds
     
 private:
@@ -58,5 +58,7 @@ private:
     // Exponential Transition for Delay-Time
     float coeff = 0.0f;   // one-pole smoothing: determines how fast the smoothing happens
     float targetDelayTime = 0.0f; // The value that the one-pole filter is trying to reach
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Parameters)
 
 };

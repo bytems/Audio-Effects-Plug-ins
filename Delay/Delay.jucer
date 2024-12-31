@@ -5,6 +5,10 @@
               pluginManufacturerCode="MoMo" pluginCode="Dlay" cppLanguageStandard="20">
   <MAINGROUP id="vYcKtZ" name="bytems-Delay">
     <GROUP id="{EF4DBB4C-5732-AD7D-D729-393F93FBD971}" name="Source">
+      <FILE id="MTNMka" name="LookAndFeel.cpp" compile="1" resource="0" file="Source/LookAndFeel.cpp"/>
+      <FILE id="G0hBu2" name="LookAndFeel.h" compile="0" resource="0" file="Source/LookAndFeel.h"/>
+      <FILE id="rZ5Qj4" name="RotaryKnob.cpp" compile="1" resource="0" file="Source/RotaryKnob.cpp"/>
+      <FILE id="Lzihqv" name="RotaryKnob.h" compile="0" resource="0" file="Source/RotaryKnob.h"/>
       <FILE id="Mzgtp0" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="dPqZPu" name="PluginProcessor.h" compile="0" resource="0"

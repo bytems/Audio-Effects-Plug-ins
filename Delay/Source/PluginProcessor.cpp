@@ -182,6 +182,7 @@ bool DelayAudioProcessor::hasEditor() const
     return true; // (change this to false if you choose to not supply an editor)
 }
 
+// DAW
 juce::AudioProcessorEditor* DelayAudioProcessor::createEditor()
 {
     return new DelayAudioProcessorEditor (*this);

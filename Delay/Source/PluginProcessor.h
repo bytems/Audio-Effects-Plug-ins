@@ -38,7 +38,7 @@ public:
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     //==============================================================================
-    juce::AudioProcessorEditor* createEditor() override;
+    juce::AudioProcessorEditor* createEditor() override; // Host (aka DAW) calls this function to open UI
     bool hasEditor() const override;
 
     //==============================================================================
@@ -62,17 +62,19 @@ public:
      */
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
-
-private:
-    //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayAudioProcessor)
     
+    //==============================================================================
     juce::AudioProcessorValueTreeState apvts{  // Variable named apvts, which will manage plug-in parameters
         *this, // connects APTVS to this plug-in
         nullptr, // Undo Manager -- ignore
         "Parameters",  // Name for apvts
         Parameters::createParameterLayout() // list of parameters the plug-in has
     };
+
+private:
+    //==============================================================================
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayAudioProcessor)
+    
     
     Parameters params; // Tells the DelayAudioProc that it has Parameters object
     // DelayLine: Delay sound by a certain amount of time. We keep track of samples

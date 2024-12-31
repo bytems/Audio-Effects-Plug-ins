@@ -29,6 +29,16 @@ static juce::String stringFromMilliseconds(float value, int){
     else                     return juce::String(value * 0.001f, 2) + " s";
 }
 
+static float millisecondsFromString(const juce::String& text)
+{
+    float value = text.getFloatValue();
+    if(!text.endsWithIgnoreCase("ms")){
+        if(text.endsWithIgnoreCase("s") || value < Parameters::minDelayTime)
+            return value * 1000.0f;
+    }
+    return value;
+}
+
 static juce::String stringFromDecibels(float value, int){
     return juce::String(value, 1) + " dB";
 }
@@ -65,20 +75,22 @@ juce::AudioProcessorValueTreeState::ParameterLayout Parameters::createParameterL
                     juce::AudioParameterFloatAttributes().withStringFromValueFunction(stringFromDecibels)
                     ));
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-                    delayTimeID,
-                    "DelayTime",
-                    juce::NormalisableRange<float> {minDelayTime, maxDelayTime, 0.001f, 0.25f},
-                    100.0f,
-                    juce::AudioParameterFloatAttributes().withStringFromValueFunction(stringFromMilliseconds)
-                    // Tells JUCE to use the string-from-value function when host asks for a textual representation of the parameters value
-                    ));
-    layout.add(std::make_unique<juce::AudioParameterFloat>(
                     mixParamID,
                     "Mix",
                     juce::NormalisableRange<float> {0.0f, 100.0f, 1.0f},
                     100.0f,
                     juce::AudioParameterFloatAttributes().withStringFromValueFunction(stringFromPercent)
                     // Tells JUCE to use the string-from-value function when host asks for a textual representation of the parameters value
+                    ));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+                    delayTimeID,
+                    "DelayTime",
+                    juce::NormalisableRange<float> {minDelayTime, maxDelayTime, 0.001f, 0.25f},
+                    100.0f,
+                    juce::AudioParameterFloatAttributes()
+                        .withStringFromValueFunction(stringFromMilliseconds)
+                        .withValueFromStringFunction(millisecondsFromString)
+                    // Tells JUCE to use the msfrStr function when host updates the parameters value
                     ));
     return layout;
 }
