@@ -4,6 +4,10 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" pluginManufacturer="bytems"
               pluginManufacturerCode="MoMo" pluginCode="Dlay" cppLanguageStandard="20">
   <MAINGROUP id="vYcKtZ" name="bytems-Delay">
+    <GROUP id="{1F691891-504F-C9C7-8BCC-7FA107277426}" name="Assets">
+      <FILE id="w8bcsk" name="Lato-Medium.ttf" compile="0" resource="1" file="../../getting-started-book-main/Resources/Lato-Medium.ttf"/>
+      <FILE id="ULwlnM" name="Logo.png" compile="0" resource="1" file="../../getting-started-book-main/Resources/Logo.png"/>
+    </GROUP>
     <GROUP id="{EF4DBB4C-5732-AD7D-D729-393F93FBD971}" name="Source">
       <FILE id="MTNMka" name="LookAndFeel.cpp" compile="1" resource="0" file="Source/LookAndFeel.cpp"/>
       <FILE id="G0hBu2" name="LookAndFeel.h" compile="0" resource="0" file="Source/LookAndFeel.h"/>

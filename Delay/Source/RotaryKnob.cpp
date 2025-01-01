@@ -10,14 +10,16 @@
 
 #include <JuceHeader.h>
 #include "RotaryKnob.h"
+#include "LookAndFeel.h"
 
 //==============================================================================
 // In your constructor, you should add any child components, and
 // initialise any special settings that your component needs.
 RotaryKnob::RotaryKnob(const juce::String& text,
                        juce::AudioProcessorValueTreeState& apvts,
-                       const juce::ParameterID& parameterID)
-    : attachment(apvts, parameterID.getParamID(), slider) 
+                       const juce::ParameterID& parameterID,
+                       bool drawFromMiddle)
+    : attachment(apvts, parameterID.getParamID(), slider)
 {
     
     slider.setSliderStyle(juce::Slider::SliderStyle::RotaryVerticalDrag);
@@ -32,6 +34,11 @@ RotaryKnob::RotaryKnob(const juce::String& text,
     addAndMakeVisible(label);
     
     setSize(70, 110);  // Label is 24 pixels high. So total height is 86 + 24 = 110
+    
+    setLookAndFeel(RotaryKnobLookAndFeel::get());
+    float pi = juce::MathConstants<float>::pi;
+    slider.setRotaryParameters(1.25f*pi, 2.75f*pi,true);
+    slider.getProperties().set("drawFromMiddle", drawFromMiddle);
 
 }
 
