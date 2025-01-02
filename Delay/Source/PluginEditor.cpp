@@ -19,6 +19,7 @@ DelayAudioProcessorEditor::DelayAudioProcessorEditor (DelayAudioProcessor& p)
     
     feedbackGroup.setText("Feedback");
     feedbackGroup.setTextLabelPosition(juce::Justification::horizontallyCentred);
+    feedbackGroup.addAndMakeVisible(feedbackKnob);
     addAndMakeVisible(feedbackGroup);
     
     outputGroup.setText("Output");
@@ -27,11 +28,12 @@ DelayAudioProcessorEditor::DelayAudioProcessorEditor (DelayAudioProcessor& p)
     outputGroup.addAndMakeVisible(mixKnob);
     addAndMakeVisible(outputGroup);
     
-    //addAndMakeVisible(gainKnob);
+    
+    setLookAndFeel(&mainLF);
+    
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize (500, 300);
-    setLookAndFeel(&mainLF);
+    setSize (500, 310);
 }
 
 DelayAudioProcessorEditor::~DelayAudioProcessorEditor()
@@ -84,6 +86,7 @@ void DelayAudioProcessorEditor::resized()
     
     // Position the knobs inside the groups
     delayTimeKnob.setTopLeftPosition(20, 10);
+    feedbackKnob.setTopLeftPosition(20, 10);
     mixKnob.setTopLeftPosition(20, 10);
     gainKnob.setTopLeftPosition(mixKnob.getX(), mixKnob.getBottom() + 10);
 }

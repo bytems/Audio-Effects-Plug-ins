@@ -81,4 +81,7 @@ private:
     // in Juce's own Circular buffer. A chunk of memory that stores samples
     // & waits for the right moment to start outputting them
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
+    
+    float feedbackL = 0.0f;
+    float feedbackR = 0.0f;
 };

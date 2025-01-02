@@ -58,6 +58,7 @@ Parameters::Parameters(juce::AudioProcessorValueTreeState& apvts)
     castParameter(apvts, gainParamID, gainParam);
     castParameter(apvts, delayTimeID, delayTimeParam);
     castParameter(apvts, mixParamID, mixParam);
+    castParameter(apvts, feedbackParamID, feedbackParam);
 }
 
 //==============================================================================
@@ -69,7 +70,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout Parameters::createParameterL
     // AudioParamterFloat is the object that describes the actual plug-in parameter
     layout.add(std::make_unique<juce::AudioParameterFloat>(
                     gainParamID,   //
-                    "Output Gain rip",
+                    "Output Gain",
                     juce::NormalisableRange<float> {-12.0f, 12.0f},
                     0.00f,
                     juce::AudioParameterFloatAttributes().withStringFromValueFunction(stringFromDecibels)
@@ -92,13 +93,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout Parameters::createParameterL
                         .withValueFromStringFunction(millisecondsFromString)
                     // Tells JUCE to use the msfrStr function when host updates the parameters value
                     ));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+                    feedbackParamID,
+                    "Feedback",
+                    juce::NormalisableRange<float> {-100.0f, 100.0f, 1.0f},
+                    0.0f,
+                    juce::AudioParameterFloatAttributes().withStringFromValueFunction(stringFromPercent)
+                    // Tells JUCE to use the string-from-value function when host asks for a textual representation of the parameters value
+                    ));
     return layout;
 }
 
 //==============================================================================
 void Parameters::prepareToPlay(double sampleRate) noexcept
 {
-    /*          GainSmoother
+    /*          Linear Smoothing
       THe gainSmoother needs to know how long it should take to
       transition from previous parameter value to new one:
         If smoothing time too short short, you'll hear zipper noise
@@ -107,6 +116,9 @@ void Parameters::prepareToPlay(double sampleRate) noexcept
      */
     double duration = 0.02;  // in seconds
     gainSmoother.reset(sampleRate, duration);
+    mixSmoother.reset(sampleRate, duration);
+    feedbackSmoother.reset(sampleRate, duration);
+    
     /*
         Delay-Line Exponential Transition - filter Coefficient depends on sample rate
         0.2f means 200 ms. After 200ms, the one-pole filter will have approached
@@ -115,10 +127,7 @@ void Parameters::prepareToPlay(double sampleRate) noexcept
      */
     coeff = 1.0f - std::exp(-1.0f / (0.2f * float(sampleRate)));
     
-    /*
-            Mix smoother
-     */
-    mixSmoother.reset(sampleRate, duration);
+    
 }
 
 
@@ -129,6 +138,9 @@ void Parameters::reset() noexcept
     
     mix = 1.0f;  // 100%, mixing in the wet signal fully
     mixSmoother.setCurrentAndTargetValue(mixParam->get() * 0.01f); // Convert Percentage to number;
+    
+    feedback = 0.0f;  // No feedback
+    feedbackSmoother.setCurrentAndTargetValue(feedbackParam->get() * 0.01f);
 }
 // This function updates the parameters from the latest APTVS source - usally called once per block
 void Parameters::update() noexcept
@@ -143,6 +155,7 @@ void Parameters::update() noexcept
      */
     gainSmoother.setTargetValue(juce::Decibels::decibelsToGain(gainParam->get()));
     mixSmoother.setTargetValue(mixParam->get() * 0.01f);
+    feedbackSmoother.setTargetValue(feedbackParam->get() * 0.01f);
 }
 
 // Called once per sample
@@ -150,6 +163,7 @@ void Parameters::smoothen() noexcept
 {
     gain = gainSmoother.getNextValue();
     mix = mixSmoother.getNextValue();
+    feedback = feedbackSmoother.getNextValue();
     /*
      Mathematically we want to do: currentValue = currentValue(1 - coff)  + targetValue*coeff
      Work by example, if coeff is 0.1, then currentValue is multiplied by 0.9 and targetValue by 0.1

@@ -111,6 +111,10 @@ void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     delayLine.setMaximumDelayInSamples(maxDelayInSamples);
     delayLine.reset();
     //DBG(maxDelayInSamples);
+    
+    // Clear out any old sample values from the feedback path
+    feedbackL = 0.0f;
+    feedbackR = 0.0f;
 }
 
 void DelayAudioProcessor::releaseResources()
@@ -159,14 +163,26 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
         
         float dryL = channelDataL[sample];    // Dry sample: What we call the unprocessed audio
         float dryR = channelDataR[sample];
-        delayLine.pushSample(0, dryL);
-        delayLine.pushSample(1, dryR);
-        float wetL = params.mix * delayLine.popSample(0);  // Wet sample: What we call processed signals
-        float wetR = params.mix * delayLine.popSample(1);
         
-        // Mixing the delayed audio with the original dry sound is called the dry/wet mix
-        channelDataL[sample] = (wetL + dryL) * params.gain;
-        channelDataR[sample] = (wetR + dryR) * params.gain;
+        // Add the sample coming from the feedback path to the dry signal, and put sum in delay line
+        delayLine.pushSample(0, dryL + feedbackL);
+        delayLine.pushSample(1, dryR + feedbackR);
+        
+        float wetL = delayLine.popSample(0);  // Wet sample: What we call processed signals
+        float wetR = delayLine.popSample(1);
+        
+        // Take output from delay line, multiply with feedback gain to get new feedback sample
+        // Note that what we're writing to feedback isnt used until next iteration of loop.
+        feedbackL = wetL * params.feedback;
+        feedbackR = wetR * params.feedback;
+        
+        // Create mix. Mixing the processed audio with the original dry sound is called the dry/wet mix
+        float mixL = dryL + wetL * params.mix;
+        float mixR = dryR + wetR * params.mix;
+        
+        // Write the output samples back into the juce::AudioBuffer, after applying the final gain
+        channelDataL[sample] = mixL * params.gain;
+        channelDataR[sample] = mixR * params.gain;
         
         /*
             Outputting values as if they were an audio signal and looking at them using the oscilloscope
@@ -177,7 +193,8 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
         
     }
     #if JUCE_DEBUG
-    protectYourEars(buffer);
+    protectYourEars(buffer);  // Techniacally not allowed in audio thread (its slow w system calls)
+                              // However statement prints something in an exceptional situation, so it OK
     #endif
 }
 
