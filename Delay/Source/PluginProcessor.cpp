@@ -123,9 +123,22 @@ void DelayAudioProcessor::releaseResources()
     // spare memory, etc.
 }
 
+/*
+  When the plug-in is loaded, the host will repeatedly call this function with different options
+  to see which buses the plug-in supports. Allows host & plug-in to negotiate best bus for a situation
+ */
 bool DelayAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
-    return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
+    const auto mono =   juce::AudioChannelSet::mono();
+    const auto stereo = juce::AudioChannelSet::stereo();
+    const auto mainIn =  layouts.getMainInputChannelSet();
+    const auto mainOut = layouts.getMainOutputChannelSet();
+        
+    if(mainIn == mono   && mainOut == mono)   return true;    // mono -> mono
+    if(mainIn == mono   && mainOut == stereo) return true;    // mono -> stereo
+    if(mainIn == stereo && mainOut == stereo) return true;   // stereo -> stereo
+    // return mainOut == stereo;
+    return false;
 }
 
 void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[maybe_unused]] juce::MidiBuffer& midiMessages)
@@ -142,61 +155,97 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's audio processing...
-    // Make sure to reset the state if your inner loop is processing the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels interleaved by keeping the same state.
-    
+    /* This is the place where you'd normally do the guts of your plugin's audio processing...  */
     params.update(); // reads the most recent parameter values, updating target value of any smoothers
     
-    //  Two ways to apply gain - Use juce::AudioBuffer function
-    //buffer.applyGain(0.1f);
-    // Manually
-    float* channelDataL = buffer.getWritePointer(0);
-    float* channelDataR = buffer.getWritePointer(1);
-    for(int sample = 0; sample < buffer.getNumSamples(); sample++){ //  loop handling the samples
-        params.smoothen();  // Smooth motion prevents zipper noise
-        
-        float delayInSamples = params.delayTime / 1000.0f * sampleRate;
-        delayLine.setDelay(delayInSamples);
-        
-        // WE need to proc L & R channel at the same time so that the same smoothed param is applied
-        
-        float dryL = channelDataL[sample];    // Dry sample: What we call the unprocessed audio
-        float dryR = channelDataR[sample];
-        
-        // Add the sample coming from the feedback path to the dry signal, and put sum in delay line
-        delayLine.pushSample(0, dryL + feedbackL);
-        delayLine.pushSample(1, dryR + feedbackR);
-        
-        float wetL = delayLine.popSample(0);  // Wet sample: What we call processed signals
-        float wetR = delayLine.popSample(1);
-        
-        // Take output from delay line, multiply with feedback gain to get new feedback sample
-        // Note that what we're writing to feedback isnt used until next iteration of loop.
-        feedbackL = wetL * params.feedback;
-        feedbackR = wetR * params.feedback;
-        
-        // Create mix. Mixing the processed audio with the original dry sound is called the dry/wet mix
-        float mixL = dryL + wetL * params.mix;
-        float mixR = dryR + wetR * params.mix;
-        
-        // Write the output samples back into the juce::AudioBuffer, after applying the final gain
-        channelDataL[sample] = mixL * params.gain;
-        channelDataR[sample] = mixR * params.gain;
-        
-        /*
-            Outputting values as if they were an audio signal and looking at them using the oscilloscope
-            is a simple trick to help debug the plug-in and verify everything works as it should.
-         */
-        //channelDataL[sample] = params.delayTime / 5000.0f;  // Checks to see how delay time smoothly
-        //channelDataR[sample] = params.delayTime/ 5000.0f;   // transitions
-        
+
+    /** @param buffer: Contains channels for all input buses & output buses. Sadly, it does not make a distinction
+                       between the number of input channels vs number of output channels.
+     */
+    // Get read access to input bus chaneels
+    auto mainInput = getBusBuffer(buffer, true, 0);
+    auto mainInputChannels = mainInput.getNumChannels();
+    auto isMainInputStereo = mainInputChannels > 1;
+    const float* inputDataL = mainInput.getReadPointer(0);
+    const float* inputDataR = mainInput.getReadPointer(isMainInputStereo ? 1 : 0);
+    
+    // Get write access to output bus channels
+    auto mainOutput = getBusBuffer(buffer, false, 0);
+    auto mainOutputChannesl = mainOutput.getNumChannels();
+    auto isMainOutputStereo = mainOutputChannesl > 1;
+    float* outputDataL = mainOutput.getWritePointer(0);
+    float* outputDataR = mainOutput.getWritePointer(isMainOutputStereo ? 1 : 0);
+    
+    /*        Processing Loop          */
+    if(isMainInputStereo){  //  Stereo Audio processing loop
+        for(int sample = 0; sample < buffer.getNumSamples(); sample++){
+            params.smoothen();  // Smooth motion prevents zipper noise
+            
+            float delayInSamples = params.delayTime / 1000.0f * sampleRate;
+            delayLine.setDelay(delayInSamples);
+            
+            // WE need to proc L & R channel at the same time so that the same smoothed param is applied
+            
+            float dryL = inputDataL[sample];    // Dry sample: What we call the unprocessed audio
+            float dryR = inputDataR[sample];
+            
+            // convert stereo to mono
+            float mono = (dryL + dryR) * 0.5f;
+            
+            // Add the sample coming from the feedback path to the dry signal, and put sum in delay line
+            // push the mono signal into the delay line
+            // Ping-Poing feedback: Notice we are feedback R to the left channels delay line
+            delayLine.pushSample(0, mono*params.panL + feedbackR);
+            delayLine.pushSample(1, mono*params.panR + feedbackL);
+            
+            float wetL = delayLine.popSample(0);  // Wet sample: What we call processed signals
+            float wetR = delayLine.popSample(1);
+            
+            // Take output from delay line, multiply with feedback gain to get new feedback sample
+            // Note that what we're writing to feedback isnt used until next iteration of loop.
+            feedbackL = wetL * params.feedback;
+            feedbackR = wetR * params.feedback;
+            
+            // Create mix. Mixing the processed audio with the original dry sound is called the dry/wet mix
+            float mixL = dryL + wetL * params.mix;
+            float mixR = dryR + wetR * params.mix;
+            
+            // Write the output samples back into the juce::AudioBuffer, after applying the final gain
+            outputDataL[sample] = mixL * params.gain;
+            outputDataR[sample] = mixR * params.gain;
+            
+            /*
+                Outputting values as if they were an audio signal and looking at them using the oscilloscope
+                is a simple trick to help debug the plug-in and verify everything works as it should.
+             */
+            //channelDataL[sample] = params.delayTime / 5000.0f;  // Checks to see how delay time smoothly
+            //channelDataR[sample] = params.delayTime/ 5000.0f;   // transitions
+            
+        }
+        #if JUCE_DEBUG
+        protectYourEars(buffer);  // Techniacally not allowed in audio thread (its slow w system calls)
+                                  // However statement prints something in an exceptional situation, so it OK
+        #endif
     }
-    #if JUCE_DEBUG
-    protectYourEars(buffer);  // Techniacally not allowed in audio thread (its slow w system calls)
-                              // However statement prints something in an exceptional situation, so it OK
-    #endif
+    else { // Processing loop for mono
+        for(int sample = 0; sample < buffer.getNumSamples(); ++sample){
+            params.smoothen();
+            
+            float delayInSamples = params.delayTime / 1000.0f * sampleRate;
+            delayLine.setDelay(delayInSamples);
+            
+            float dry = inputDataL[sample];
+            delayLine.pushSample(0, dry + feedbackL);
+            
+            float wet = delayLine.popSample(0);
+            feedbackL = wet * params.feedback;
+            
+            float mix = dry + wet*params.mix;
+            outputDataL[sample] = mix * params.gain;
+        }
+    }
 }
+    
 
 //==============================================================================
 bool DelayAudioProcessor::hasEditor() const

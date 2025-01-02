@@ -8,6 +8,7 @@
 */
 
 #include "Parameters.h"
+#include "DSP.h"
 
 //===================== Static Helper Functions =================================
 template<typename T>
@@ -59,6 +60,7 @@ Parameters::Parameters(juce::AudioProcessorValueTreeState& apvts)
     castParameter(apvts, delayTimeID, delayTimeParam);
     castParameter(apvts, mixParamID, mixParam);
     castParameter(apvts, feedbackParamID, feedbackParam);
+    castParameter(apvts, stereoParamID, stereoParam);
 }
 
 //==============================================================================
@@ -101,6 +103,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout Parameters::createParameterL
                     juce::AudioParameterFloatAttributes().withStringFromValueFunction(stringFromPercent)
                     // Tells JUCE to use the string-from-value function when host asks for a textual representation of the parameters value
                     ));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+                    stereoParamID,
+                    "Stereo",
+                    juce::NormalisableRange<float> {-100.0f, 100.0f, 1.0f},
+                    0.0f,
+                    juce::AudioParameterFloatAttributes().withStringFromValueFunction(stringFromPercent)
+                    // Tells JUCE to use the string-from-value function when host asks for a textual representation of the parameters value
+                    ));
     return layout;
 }
 
@@ -118,6 +128,7 @@ void Parameters::prepareToPlay(double sampleRate) noexcept
     gainSmoother.reset(sampleRate, duration);
     mixSmoother.reset(sampleRate, duration);
     feedbackSmoother.reset(sampleRate, duration);
+    stereoSmoother.reset(sampleRate, duration);
     
     /*
         Delay-Line Exponential Transition - filter Coefficient depends on sample rate
@@ -141,6 +152,10 @@ void Parameters::reset() noexcept
     
     feedback = 0.0f;  // No feedback
     feedbackSmoother.setCurrentAndTargetValue(feedbackParam->get() * 0.01f);
+    
+    panL = 0.0f;
+    panR = 1.0f;
+    stereoSmoother.setCurrentAndTargetValue(stereoParam->get() * 0.01f);
 }
 // This function updates the parameters from the latest APTVS source - usally called once per block
 void Parameters::update() noexcept
@@ -156,6 +171,7 @@ void Parameters::update() noexcept
     gainSmoother.setTargetValue(juce::Decibels::decibelsToGain(gainParam->get()));
     mixSmoother.setTargetValue(mixParam->get() * 0.01f);
     feedbackSmoother.setTargetValue(feedbackParam->get() * 0.01f);
+    stereoSmoother.setTargetValue(stereoParam->get() * 0.01f);
 }
 
 // Called once per sample
@@ -164,6 +180,8 @@ void Parameters::smoothen() noexcept
     gain = gainSmoother.getNextValue();
     mix = mixSmoother.getNextValue();
     feedback = feedbackSmoother.getNextValue();
+    panningEqualPower(stereoSmoother.getNextValue(), panL, panR);
+    
     /*
      Mathematically we want to do: currentValue = currentValue(1 - coff)  + targetValue*coeff
      Work by example, if coeff is 0.1, then currentValue is multiplied by 0.9 and targetValue by 0.1
