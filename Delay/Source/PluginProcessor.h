@@ -82,6 +82,15 @@ private:
     // & waits for the right moment to start outputting them
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
     
+    // Stereo Feedback state
     float feedbackL = 0.0f;
     float feedbackR = 0.0f;
+    
+    // SVF from JUCE
+    juce::dsp::StateVariableTPTFilter<float> lowCutFilter;
+    juce::dsp::StateVariableTPTFilter<float> highCutFilter;
+    
+    // Previous param state
+    float lastLowCut = -1.0f;
+    float lastHighCut = -1.0f;   // "no cutoff frequency set yet"
 };

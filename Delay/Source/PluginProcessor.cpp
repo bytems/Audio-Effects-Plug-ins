@@ -19,7 +19,8 @@ DelayAudioProcessor::DelayAudioProcessor()
       ),
     params(apvts)
 {
-    // do nothing
+    lowCutFilter.setType(juce::dsp::StateVariableTPTFilterType::highpass);
+    highCutFilter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
 }
 
 DelayAudioProcessor::~DelayAudioProcessor()
@@ -99,22 +100,30 @@ void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     params.prepareToPlay(sampleRate);
     params.reset();
     
-    // Prepare DelayLine  - Need Spec & MaxDelay
+    /* JUCE DSP objects must always be prepared before they can be used */
+    // DSP objects Need Spec
     juce::dsp::ProcessSpec spec;
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = juce::uint32(samplesPerBlock);
     spec.numChannels = 2;
     delayLine.prepare(spec);
+    lowCutFilter.prepare(spec);
+    highCutFilter.prepare(spec);
     
+    // DelayLine  - Need Spec & MaxDelay
     double numSamples = Parameters::maxDelayTime / 1000.0 * sampleRate;
     int maxDelayInSamples = int(std::ceil(numSamples));
-    delayLine.setMaximumDelayInSamples(maxDelayInSamples);
-    delayLine.reset();
     //DBG(maxDelayInSamples);
+    delayLine.setMaximumDelayInSamples(maxDelayInSamples);
+    
     
     // Clear out any old sample values from the feedback path
     feedbackL = 0.0f;
     feedbackR = 0.0f;
+    
+    delayLine.reset();
+    lowCutFilter.reset();
+    highCutFilter.reset();
 }
 
 void DelayAudioProcessor::releaseResources()
@@ -181,8 +190,19 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
         for(int sample = 0; sample < buffer.getNumSamples(); sample++){
             params.smoothen();  // Smooth motion prevents zipper noise
             
+            // Update JUCE::DSP objects
             float delayInSamples = params.delayTime / 1000.0f * sampleRate;
             delayLine.setDelay(delayInSamples);
+            if(params.lowCut != lastLowCut) // Only update/modify filter if Cut freq changed from last time
+            {
+                lowCutFilter.setCutoffFrequency(params.lowCut);
+                lastLowCut = params.lowCut;
+            }
+            if(params.highCut != lastHighCut){
+                highCutFilter.setCutoffFrequency(params.highCut);
+                lastHighCut = params.highCut;
+            }
+            
             
             // WE need to proc L & R channel at the same time so that the same smoothed param is applied
             
@@ -201,10 +221,18 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
             float wetL = delayLine.popSample(0);  // Wet sample: What we call processed signals
             float wetR = delayLine.popSample(1);
             
-            // Take output from delay line, multiply with feedback gain to get new feedback sample
-            // Note that what we're writing to feedback isnt used until next iteration of loop.
+            /* Read output from delay line, and:
+                -apply low/high-cut filters
+                -apply feedback gain to get new feedback sample
+              Note that what we're writing to feedback isnt used until next iteration of loop.
+             */
             feedbackL = wetL * params.feedback;
+            feedbackL =  lowCutFilter.processSample(0, feedbackL);
+            feedbackL = highCutFilter.processSample(0, feedbackL);
+            
             feedbackR = wetR * params.feedback;
+            feedbackR =  lowCutFilter.processSample(1, feedbackR);
+            feedbackR = highCutFilter.processSample(1, feedbackR);
             
             // Create mix. Mixing the processed audio with the original dry sound is called the dry/wet mix
             float mixL = dryL + wetL * params.mix;

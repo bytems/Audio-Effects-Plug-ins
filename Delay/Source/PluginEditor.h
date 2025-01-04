@@ -34,11 +34,13 @@ private:
     DelayAudioProcessor& audioProcessor;
     
     // Sub-components of Editor
-    RotaryKnob gainKnob     {"Gain",  audioProcessor.apvts, gainParamID, true};
-    RotaryKnob mixKnob      {"Mix",   audioProcessor.apvts, mixParamID};
-    RotaryKnob delayTimeKnob{"Time",  audioProcessor.apvts, delayTimeID};
+    RotaryKnob gainKnob     {"Gain",     audioProcessor.apvts, gainParamID, true};
+    RotaryKnob mixKnob      {"Mix",      audioProcessor.apvts, mixParamID};
+    RotaryKnob delayTimeKnob{"Time",     audioProcessor.apvts, delayTimeID};
     RotaryKnob feedbackKnob {"Feedback", audioProcessor.apvts, feedbackParamID, true};
-    RotaryKnob stereoKnob   {"Stereo", audioProcessor.apvts, stereoParamID, true};
+    RotaryKnob stereoKnob   {"Stereo",   audioProcessor.apvts, stereoParamID, true};
+    RotaryKnob lowCutKnob   {"Low Cut",  audioProcessor.apvts, lowCutParamID};
+    RotaryKnob highCutKnob  {"High Cut", audioProcessor.apvts, highCutParamID};
     
     // Grouping of sub-components
     juce::GroupComponent delayGroup, feedbackGroup, outputGroup;

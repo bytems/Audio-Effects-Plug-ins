@@ -17,6 +17,8 @@ const juce::ParameterID delayTimeID("delayTime", 1);
 const juce::ParameterID mixParamID("mix", 1);
 const juce::ParameterID feedbackParamID("feedback", 1);
 const juce::ParameterID stereoParamID("stereo", 1);
+const juce::ParameterID lowCutParamID("lowCut", 1);
+const juce::ParameterID highCutParamID("highCut", 1);
 
 class Parameters
 {
@@ -44,6 +46,8 @@ public:
     float feedback = 0.0f;
     float panL = 0.0f;
     float panR = 1.0f;
+    float lowCut = 20.0f;
+    float highCut = 20000.0f;
     
     // constants
     static constexpr float minDelayTime = 5.0f;
@@ -56,6 +60,8 @@ private:
     juce::AudioParameterFloat* mixParam;
     juce::AudioParameterFloat* feedbackParam;
     juce::AudioParameterFloat* stereoParam;
+    juce::AudioParameterFloat* lowCutParam;
+    juce::AudioParameterFloat* highCutParam;
     
     //==============================================================================
     // Mechanic to avoid discrete jumps whenever paramter is changed. solves zipper noise
@@ -63,6 +69,8 @@ private:
     juce::LinearSmoothedValue<float> mixSmoother;
     juce::LinearSmoothedValue<float> feedbackSmoother;
     juce::LinearSmoothedValue<float> stereoSmoother;
+    juce::LinearSmoothedValue<float> lowCutSmoother;
+    juce::LinearSmoothedValue<float> highCutSmoother;
     
     // Exponential Transition for Delay-Time
     float coeff = 0.0f;   // one-pole smoothing: determines how fast the smoothing happens
