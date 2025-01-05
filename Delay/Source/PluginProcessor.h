@@ -11,6 +11,7 @@
 #include <JuceHeader.h>
 #include "Parameters.h" // for Plug-in Parameters
 #include "Tempo.h"
+#include "DelayLine.h"
 
 
 //==============================================================================
@@ -83,7 +84,8 @@ private:
     // DelayLine: Delay sound by a certain amount of time. We keep track of samples
     // in Juce's own Circular buffer. A chunk of memory that stores samples
     // & waits for the right moment to start outputting them
-    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
+    //juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
+    DelayLine delayLineL, delayLineR;
     
     // Stereo Feedback state
     float feedbackL = 0.0f;

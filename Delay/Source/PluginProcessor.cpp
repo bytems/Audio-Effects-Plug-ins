@@ -107,7 +107,7 @@ void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = juce::uint32(samplesPerBlock);
     spec.numChannels = 2;
-    delayLine.prepare(spec);
+    //delayLine.prepare(spec);
     lowCutFilter.prepare(spec);
     highCutFilter.prepare(spec);
     
@@ -115,14 +115,16 @@ void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     double numSamples = Parameters::maxDelayTime / 1000.0 * sampleRate;
     int maxDelayInSamples = int(std::ceil(numSamples));
     //DBG(maxDelayInSamples);
-    delayLine.setMaximumDelayInSamples(maxDelayInSamples);
+    delayLineL.setMaximumDelayInSamples(maxDelayInSamples);
+    delayLineR.setMaximumDelayInSamples(maxDelayInSamples);
     
     
     // Clear out any old sample values from the feedback path
     feedbackL = 0.0f;
     feedbackR = 0.0f;
     
-    delayLine.reset();
+    delayLineL.reset();
+    delayLineR.reset();
     lowCutFilter.reset();
     highCutFilter.reset();
 }
@@ -169,7 +171,7 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
     params.update(); // reads the most recent parameter values, updating target value of any smoothers
     tempo.update(getPlayHead());
     float syncedTime = std::min<float>(tempo.getMillisecondsforNoteLength(params.delayNote),
-                                        Parameters::maxDelayTime);
+                                       Parameters::maxDelayTime);
 
     /** @param buffer: Contains channels for all input buses & output buses. Sadly, it does not make a distinction
                        between the number of input channels vs number of output channels.
@@ -196,7 +198,7 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
             // Update JUCE::DSP objects
             float delayTime = params.tempoSync ? syncedTime : params.delayTime;
             float delayInSamples = delayTime / 1000.0f * sampleRate;
-            delayLine.setDelay(delayInSamples);
+            //delayLine.setDelay(delayInSamples);
             if(params.lowCut != lastLowCut) // Only update/modify filter if Cut freq changed from last time
             {
                 lowCutFilter.setCutoffFrequency(params.lowCut);
@@ -219,11 +221,12 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
             // Add the sample coming from the feedback path to the dry signal, and put sum in delay line
             // push the mono signal into the delay line
             // Ping-Poing feedback: Notice we are feedback R to the left channels delay line
-            delayLine.pushSample(0, mono*params.panL + feedbackR);
-            delayLine.pushSample(1, mono*params.panR + feedbackL);
+            delayLineL.write(mono*params.panL + feedbackR);
+            delayLineR.write(mono*params.panR + feedbackL);
             
-            float wetL = delayLine.popSample(0);  // Wet sample: What we call processed signals
-            float wetR = delayLine.popSample(1);
+            // Wet sample: What we call processed signals
+            float wetL = delayLineL.read(delayInSamples);
+            float wetR = delayLineR.read(delayInSamples);
             
             /* Read output from delay line, and:
                 -apply low/high-cut filters
@@ -264,12 +267,11 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
             params.smoothen();
             
             float delayInSamples = params.delayTime / 1000.0f * sampleRate;
-            delayLine.setDelay(delayInSamples);
             
             float dry = inputDataL[sample];
-            delayLine.pushSample(0, dry + feedbackL);
+            delayLineL.write(dry + feedbackL);
             
-            float wet = delayLine.popSample(0);
+            float wet = delayLineL.read(delayInSamples);
             feedbackL = wet * params.feedback;
             
             float mix = dry + wet*params.mix;
