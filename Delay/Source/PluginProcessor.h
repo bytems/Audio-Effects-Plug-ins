@@ -10,6 +10,7 @@
 
 #include <JuceHeader.h>
 #include "Parameters.h" // for Plug-in Parameters
+#include "Tempo.h"
 
 
 //==============================================================================
@@ -70,13 +71,15 @@ public:
         "Parameters",  // Name for apvts
         Parameters::createParameterLayout() // list of parameters the plug-in has
     };
+    
+    Parameters params; // Tells the DelayAudioProc that it has Parameters object
 
 private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayAudioProcessor)
     
+    Tempo tempo;
     
-    Parameters params; // Tells the DelayAudioProc that it has Parameters object
     // DelayLine: Delay sound by a certain amount of time. We keep track of samples
     // in Juce's own Circular buffer. A chunk of memory that stores samples
     // & waits for the right moment to start outputting them

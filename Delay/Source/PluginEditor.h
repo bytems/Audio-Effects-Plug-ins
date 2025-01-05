@@ -18,7 +18,8 @@
 //==============================================================================
 /**
 */
-class DelayAudioProcessorEditor  : public juce::AudioProcessorEditor
+class DelayAudioProcessorEditor  : public  juce::AudioProcessorEditor,
+                                   private juce::AudioProcessorParameter::Listener
 {
 public:
     DelayAudioProcessorEditor (DelayAudioProcessor&); //  Configure all UI elements used by Editor
@@ -29,6 +30,13 @@ public:
     void resized() override;                  // Position & arrange UI elements
 
 private:
+    // Functions we must implement for the editor to become a paramter listener
+    void parameterValueChanged(int, float) override;
+    void parameterGestureChanged(int, bool) override{}
+    
+    // Clarify 
+    void updateDelayKnobs(bool tempoSyncActive);
+    
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     DelayAudioProcessor& audioProcessor;
@@ -41,13 +49,18 @@ private:
     RotaryKnob stereoKnob   {"Stereo",   audioProcessor.apvts, stereoParamID, true};
     RotaryKnob lowCutKnob   {"Low Cut",  audioProcessor.apvts, lowCutParamID};
     RotaryKnob highCutKnob  {"High Cut", audioProcessor.apvts, highCutParamID};
+    RotaryKnob delayNoteKnob{"Note",     audioProcessor.apvts, delayNoteParamID};
+    
+    juce::TextButton tempoSyncButton;
+    juce::AudioProcessorValueTreeState::ButtonAttachment tempoSyncAttachment{audioProcessor.apvts,
+                                                                             tempoSyncParamID.getParamID(),
+                                                                             tempoSyncButton};
     
     // Grouping of sub-components
     juce::GroupComponent delayGroup, feedbackGroup, outputGroup;
     
     // Style (aka look & feel) of Editor
     MainLookAndFeel mainLF;
-    
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayAudioProcessorEditor)
 };

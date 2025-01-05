@@ -99,6 +99,7 @@ void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     // Prepare all parameter supporters
     params.prepareToPlay(sampleRate);
     params.reset();
+    tempo.reset();
     
     /* JUCE DSP objects must always be prepared before they can be used */
     // DSP objects Need Spec
@@ -166,7 +167,9 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
 
     /* This is the place where you'd normally do the guts of your plugin's audio processing...  */
     params.update(); // reads the most recent parameter values, updating target value of any smoothers
-    
+    tempo.update(getPlayHead());
+    float syncedTime = std::min<float>(tempo.getMillisecondsforNoteLength(params.delayNote),
+                                        Parameters::maxDelayTime);
 
     /** @param buffer: Contains channels for all input buses & output buses. Sadly, it does not make a distinction
                        between the number of input channels vs number of output channels.
@@ -191,7 +194,8 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
             params.smoothen();  // Smooth motion prevents zipper noise
             
             // Update JUCE::DSP objects
-            float delayInSamples = params.delayTime / 1000.0f * sampleRate;
+            float delayTime = params.tempoSync ? syncedTime : params.delayTime;
+            float delayInSamples = delayTime / 1000.0f * sampleRate;
             delayLine.setDelay(delayInSamples);
             if(params.lowCut != lastLowCut) // Only update/modify filter if Cut freq changed from last time
             {

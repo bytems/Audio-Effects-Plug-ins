@@ -4,6 +4,7 @@
    The Parameter Class
  
    This class defines all the parameters that will be used by the plug-in.
+    Parameters expose the plug-in's controls to the host.
 
   ==============================================================================
 */
@@ -19,6 +20,8 @@ const juce::ParameterID feedbackParamID("feedback", 1);
 const juce::ParameterID stereoParamID("stereo", 1);
 const juce::ParameterID lowCutParamID("lowCut", 1);
 const juce::ParameterID highCutParamID("highCut", 1);
+const juce::ParameterID tempoSyncParamID("tempoSync", 1);
+const juce::ParameterID delayNoteParamID("delayNote", 1);
 
 class Parameters
 {
@@ -40,14 +43,19 @@ public:
     void smoothen() noexcept;
     
     // The public-facing variables to be used in Processing block
-    float gain = 0.0f;
+    float gain      = 0.0f;
     float delayTime = 0.0f;
-    float mix = 1.0f;  // % of wet mixed into dry
-    float feedback = 0.0f;
-    float panL = 0.0f;
-    float panR = 1.0f;
-    float lowCut = 20.0f;
-    float highCut = 20000.0f;
+    float mix       = 1.0f;  // % of wet mixed into dry
+    float feedback  = 0.0f;
+    float panL      = 0.0f;
+    float panR      = 1.0f;
+    float lowCut    = 20.0f;
+    float highCut   = 20000.0f;
+    int   delayNote = 0;
+    bool  tempoSync = false;
+    
+    // List of Public addresses where are Parameters are stored in APVTS, that will be used as listeners
+    juce::AudioParameterBool* tempoSyncParam;
     
     // constants
     static constexpr float minDelayTime = 5.0f;
@@ -62,6 +70,8 @@ private:
     juce::AudioParameterFloat* stereoParam;
     juce::AudioParameterFloat* lowCutParam;
     juce::AudioParameterFloat* highCutParam;
+    
+    juce::AudioParameterChoice* delayNoteParam;
     
     //==============================================================================
     // Mechanic to avoid discrete jumps whenever paramter is changed. solves zipper noise

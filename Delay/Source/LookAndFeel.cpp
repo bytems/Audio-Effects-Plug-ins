@@ -160,6 +160,59 @@ void RotaryKnobLookAndFeel::fillTextEditorBackground(juce::Graphics& g,
 }
 
 
+
+//=============================   Button   =====================================
+/**
+    Constructor allows you to override colors for buttons
+ */
+ButtonLookAndFeel::ButtonLookAndFeel()
+{
+    setColour(juce::TextButton::textColourOffId,  Colors::Button::text);
+    setColour(juce::TextButton::textColourOnId,   Colors::Button::textToggled);
+    setColour(juce::TextButton::buttonColourId,   Colors::Button::background);
+    setColour(juce::TextButton::buttonOnColourId, Colors::Button::backgroundToggled);
+}
+
+void ButtonLookAndFeel::drawButtonBackground(juce::Graphics &g, juce::Button &button,
+                                             const juce::Colour &backgroundColor,
+                                             [[maybe_unused]]bool shouldDrawButtonAsHighlighted,
+                                             bool shouldDrawButtonAsDown){
+    // Create a rectangle that the same as buttons bound but inset by one pixel on all sides
+    // so that theres room to draw border around the button. Trim an additional pixel from bottom
+    auto bounds = button.getLocalBounds().toFloat();
+    auto cornerSize = bounds.getHeight() * 0.25f;
+    auto buttonRect = bounds.reduced(1.0f, 1.0f).withTrimmedBottom(1.0f);
+    
+    // When button is clicked, shift the "buttonRect" one pixel downard, to give impression that
+    // that button is literally being pressed down like a mechanical button
+    if(shouldDrawButtonAsDown)
+        buttonRect.translate(0.0, 1.0f);
+    
+    g.setColour(backgroundColor);
+    g.fillRoundedRectangle(buttonRect, cornerSize);
+    
+    g.setColour(Colors::Button::outline);
+    g.drawRoundedRectangle(buttonRect, cornerSize, 2.0f);
+}
+
+void ButtonLookAndFeel::drawButtonText(juce::Graphics &g, juce::TextButton &button,
+                                       [[maybe_unused]]bool shouldDrawButtonAsHightlighted,
+                                       bool shouldDrawButtonAsDown){
+    auto bounds = button.getLocalBounds().toFloat();
+    auto buttonRect = bounds.reduced(1.0f, 1.0f).withTrimmedBottom(1.0f);
+    
+    // Shift buttonRect down when button is pressed
+    if(shouldDrawButtonAsDown)
+        buttonRect.translate(0.0f, 1.0f);
+    
+    if(button.getToggleState())
+        g.setColour(button.findColour(juce::TextButton::textColourOnId));
+    else
+        g.setColour(button.findColour(juce::TextButton::textColourOffId));
+    
+    g.setFont(Fonts::getFont());
+    g.drawText(button.getButtonText(), buttonRect, juce::Justification::centred);
+}
 //==============================================================================
 /*  Styling the Editor   */
 MainLookAndFeel::MainLookAndFeel(){

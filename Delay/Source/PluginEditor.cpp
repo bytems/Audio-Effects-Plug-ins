@@ -15,6 +15,7 @@ DelayAudioProcessorEditor::DelayAudioProcessorEditor (DelayAudioProcessor& p)
     delayGroup.setText("Delay");
     delayGroup.setTextLabelPosition(juce::Justification::horizontallyCentred);
     delayGroup.addAndMakeVisible(delayTimeKnob);
+    delayGroup.addChildComponent(delayNoteKnob);
     addAndMakeVisible(delayGroup);
     
     feedbackGroup.setText("Feedback");
@@ -31,16 +32,29 @@ DelayAudioProcessorEditor::DelayAudioProcessorEditor (DelayAudioProcessor& p)
     outputGroup.addAndMakeVisible(mixKnob);
     addAndMakeVisible(outputGroup);
     
+    tempoSyncButton.setButtonText("Sync");
+    tempoSyncButton.setClickingTogglesState(true);
+    tempoSyncButton.setBounds(0, 0, 70, 27);
+    tempoSyncButton.setLookAndFeel(ButtonLookAndFeel::get());
+    delayGroup.addAndMakeVisible(tempoSyncButton);
+    
+    // Update visibility of delay knobs based tempoSync paramter
+    updateDelayKnobs(audioProcessor.params.tempoSyncParam->get());
+    
+    // Parameters that Editor should listen to should be registered
+    audioProcessor.params.tempoSyncParam->addListener(this);
+    
     
     setLookAndFeel(&mainLF);
     
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize (500, 320);
+    setSize (500, 340);
 }
 
 DelayAudioProcessorEditor::~DelayAudioProcessorEditor()
 {
+    audioProcessor.params.tempoSyncParam->removeListener(this);
     setLookAndFeel(nullptr); // Tells the editor to stop using "mainLF" as its look-and-feel
                              // so that it can be safely deallocated
 }
@@ -89,10 +103,38 @@ void DelayAudioProcessorEditor::resized()
     
     // Position the knobs inside the groups
     delayTimeKnob.setTopLeftPosition(20, 20);
+    tempoSyncButton.setTopLeftPosition(20, delayTimeKnob.getBottom() + 10);
+    delayNoteKnob.setTopLeftPosition(delayTimeKnob.getX(), delayTimeKnob.getY());
     feedbackKnob.setTopLeftPosition(20, 20);
     stereoKnob.setTopLeftPosition(feedbackKnob.getRight() + 20, 20);
     lowCutKnob.setTopLeftPosition(feedbackKnob.getX(), feedbackKnob.getBottom() + 10);
     highCutKnob.setTopLeftPosition(lowCutKnob.getRight() + 20, lowCutKnob.getY());
     mixKnob.setTopLeftPosition(20, 20);
     gainKnob.setTopLeftPosition(mixKnob.getX(), mixKnob.getBottom() + 10);
+}
+
+/**
+ Warning: @function parameterValueChanged can called by different threads:
+        - UI thread whey you click a button
+        - Audio thread when automation is used
+ UI thread, aka message thread, can directly call/modify delay knobs
+ Other therads must asynchronously pass of this code to the UI thread
+ */
+void DelayAudioProcessorEditor::parameterValueChanged(int, float value){
+    if(juce::MessageManager::getInstance()->isThisTheMessageThread())
+        updateDelayKnobs(value != 0.0f);
+    else{
+        juce::MessageManager::callAsync([this, value]  // Lambda function FTW
+        {
+            updateDelayKnobs(value != 0.0f);
+        });
+    }
+}
+
+/**
+    Hide approriate Delay Knob, and make visible other Delay knob
+ */
+void DelayAudioProcessorEditor::updateDelayKnobs(bool tempoSyncActive){
+    delayTimeKnob.setVisible(!tempoSyncActive); // Time Knob is visible if TemoSync parameter is off
+    delayNoteKnob.setVisible(tempoSyncActive);  // Note knob is ....
 }
