@@ -13,6 +13,7 @@
 #include "PluginProcessor.h"
 #include "Parameters.h"
 #include "RotaryKnob.h"
+#include "LevelMeter.h"
 #include "LookAndFeel.h"
 
 //==============================================================================
@@ -50,8 +51,10 @@ private:
     RotaryKnob lowCutKnob   {"Low Cut",  audioProcessor.apvts, lowCutParamID};
     RotaryKnob highCutKnob  {"High Cut", audioProcessor.apvts, highCutParamID};
     RotaryKnob delayNoteKnob{"Note",     audioProcessor.apvts, delayNoteParamID};
-    
     juce::TextButton tempoSyncButton;
+    LevelMeter meter;
+    
+    // Create attachments not already done
     juce::AudioProcessorValueTreeState::ButtonAttachment tempoSyncAttachment{audioProcessor.apvts,
                                                                              tempoSyncParamID.getParamID(),
                                                                              tempoSyncButton};

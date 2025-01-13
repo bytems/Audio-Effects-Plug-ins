@@ -9,6 +9,9 @@
       <FILE id="ULwlnM" name="Logo.png" compile="0" resource="1" file="../../getting-started-book-main/Resources/Logo.png"/>
     </GROUP>
     <GROUP id="{EF4DBB4C-5732-AD7D-D729-393F93FBD971}" name="Source">
+      <FILE id="A3BGEg" name="Measurement.h" compile="0" resource="0" file="Source/Measurement.h"/>
+      <FILE id="md9dYk" name="LevelMeter.cpp" compile="1" resource="0" file="Source/LevelMeter.cpp"/>
+      <FILE id="CYhWup" name="LevelMeter.h" compile="0" resource="0" file="Source/LevelMeter.h"/>
       <FILE id="AdDnHt" name="DelayLine.cpp" compile="1" resource="0" file="Source/DelayLine.cpp"/>
       <FILE id="HIY0Av" name="DelayLine.h" compile="0" resource="0" file="Source/DelayLine.h"/>
       <FILE id="e33fxE" name="Tempo.cpp" compile="1" resource="0" file="Source/Tempo.cpp"/>

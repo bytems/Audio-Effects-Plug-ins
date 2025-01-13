@@ -12,6 +12,7 @@
 #include "Parameters.h" // for Plug-in Parameters
 #include "Tempo.h"
 #include "DelayLine.h"
+#include "Measurement.h"
 
 
 //==============================================================================
@@ -74,6 +75,9 @@ public:
     };
     
     Parameters params; // Tells the DelayAudioProc that it has Parameters object
+    
+    // Atomics to communicate between AP & editor
+    Measurement levelL, levelR;
 
 private:
     //==============================================================================

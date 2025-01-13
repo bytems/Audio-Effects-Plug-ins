@@ -111,17 +111,20 @@ void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     lowCutFilter.prepare(spec);
     highCutFilter.prepare(spec);
     
-    // DelayLine  - Need Spec & MaxDelay
+    // DelayLine
     double numSamples = Parameters::maxDelayTime / 1000.0 * sampleRate;
     int maxDelayInSamples = int(std::ceil(numSamples));
-    //DBG(maxDelayInSamples);
     delayLineL.setMaximumDelayInSamples(maxDelayInSamples);
     delayLineR.setMaximumDelayInSamples(maxDelayInSamples);
     
+    /*         Reset all params & variables        */
     
     // Clear out any old sample values from the feedback path
     feedbackL = 0.0f;
     feedbackR = 0.0f;
+    
+    levelL.reset();
+    levelR.reset();
     
     delayLineL.reset();
     delayLineR.reset();
@@ -172,7 +175,9 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
     tempo.update(getPlayHead());
     float syncedTime = std::min<float>(tempo.getMillisecondsforNoteLength(params.delayNote),
                                        Parameters::maxDelayTime);
-
+    float maxL = 0.0f; // Used to measure peak level for current block
+    float maxR = 0.0f;
+    
     /** @param buffer: Contains channels for all input buses & output buses. Sadly, it does not make a distinction
                        between the number of input channels vs number of output channels.
      */
@@ -245,18 +250,30 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
             float mixL = dryL + wetL * params.mix;
             float mixR = dryR + wetR * params.mix;
             
-            // Write the output samples back into the juce::AudioBuffer, after applying the final gain
-            outputDataL[sample] = mixL * params.gain;
-            outputDataR[sample] = mixR * params.gain;
+            // Apply the final gain
+            float outL = mixL * params.gain;
+            float outR = mixR * params.gain;
+            
+            // Write the output samples back into the juce::AudioBuffer
+            outputDataL[sample] = outL;
+            outputDataR[sample] = outR;
+            
+            // Atmomically store the peaks (will be communicated to Editor)
+            maxL = std::max(maxL, std::abs(outL));
+            maxR = std::max(maxR, std::abs(outR));
             
             /*
                 Outputting values as if they were an audio signal and looking at them using the oscilloscope
                 is a simple trick to help debug the plug-in and verify everything works as it should.
              */
-            //channelDataL[sample] = params.delayTime / 5000.0f;  // Checks to see how delay time smoothly
-            //channelDataR[sample] = params.delayTime/ 5000.0f;   // transitions
+            //outputDataL[sample] = params.delayTime / 5000.0f;  // Checks to see how delay time smoothly
+            //outputDataR[sample] = params.delayTime/ 5000.0f;   // transitions
             
         }
+        
+        levelL.updateIfGreater(maxL);
+        levelR.updateIfGreater(maxR);
+        
         #if JUCE_DEBUG
         protectYourEars(buffer);  // Techniacally not allowed in audio thread (its slow w system calls)
                                   // However statement prints something in an exceptional situation, so it OK
