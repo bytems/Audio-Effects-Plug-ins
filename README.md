@@ -17,7 +17,7 @@ git submodule update --init
 
 # License
 Code by Mohamed Saleh.
-Copyright &copy; 2024 Mohamed Saleh.
+Copyright &copy; 2025 Mohamed Saleh.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
