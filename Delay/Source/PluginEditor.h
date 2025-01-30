@@ -53,11 +53,16 @@ private:
     RotaryKnob delayNoteKnob{"Note",     audioProcessor.apvts, delayNoteParamID};
     juce::TextButton tempoSyncButton;
     LevelMeter meter;
+    juce::ImageButton bypassButton;
     
     // Create attachments not already done
     juce::AudioProcessorValueTreeState::ButtonAttachment tempoSyncAttachment{audioProcessor.apvts,
                                                                              tempoSyncParamID.getParamID(),
                                                                              tempoSyncButton};
+    
+    juce::AudioProcessorValueTreeState::ButtonAttachment bypassAttachement{audioProcessor.apvts,
+                                                                           bypassParamID.getParamID(),
+                                                                           bypassButton};
     
     // Grouping of sub-components
     juce::GroupComponent delayGroup, feedbackGroup, outputGroup;

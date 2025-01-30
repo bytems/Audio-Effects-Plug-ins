@@ -46,12 +46,15 @@ public:
 
     //==============================================================================
     const juce::String getName() const override;
-
     bool acceptsMidi() const override;
     bool producesMidi() const override;
     bool isMidiEffect() const override;
     double getTailLengthSeconds() const override;
 
+    //==============================================================================
+    /* Tells JUCE & DAW that this plug-in has a bypass parameter */
+    juce::AudioProcessorParameter* getBypassParameter() const override;
+    
     //==============================================================================
     int getNumPrograms() override;
     int getCurrentProgram() override;
@@ -90,6 +93,18 @@ private:
     // & waits for the right moment to start outputting them
     //juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine;
     DelayLine delayLineL, delayLineR;
+    float delayInSamples = 0.0f;   // current delay time
+    float targetDelay    = 0.0f;
+    
+    /* For Ducking feedback */
+    float fade           = 0.0f;   // Current wet signal envelope level
+    float fadeTarget     = 0.0f;
+    float coeff          = 0.0f;
+    float wait           = 0.0f;
+    float waitInc        = 0.0f;
+    //float xfade          = 0.0f;   // Cross-fade to remove delay time knob artifacts
+    //float xfadeInc       = 0.0f;   // step size of xfade, determined by sample rate
+    
     
     // Stereo Feedback state
     float feedbackL = 0.0f;

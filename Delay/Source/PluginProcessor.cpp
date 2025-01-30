@@ -76,16 +76,16 @@ int DelayAudioProcessor::getCurrentProgram()
     return 0;
 }
 
-void DelayAudioProcessor::setCurrentProgram (int index)
+void DelayAudioProcessor::setCurrentProgram (int)
 {
 }
 
-const juce::String DelayAudioProcessor::getProgramName (int index)
+const juce::String DelayAudioProcessor::getProgramName (int)
 {
     return {};
 }
 
-void DelayAudioProcessor::changeProgramName (int index, const juce::String& newName)
+void DelayAudioProcessor::changeProgramName (int, const juce::String&)
 {
 }
 
@@ -119,10 +119,26 @@ void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     
     /*         Reset all params & variables        */
     
-    // Clear out any old sample values from the feedback path
+    // Delay Line Params
+    delayInSamples = 0.0f;
+    targetDelay = 0.0f;
+    
+    // fading applied to feedback
+    fade = 1.0;          // Current wet signal envelope level
+    fadeTarget = 1.0f;
+    
+    coeff = 1.0 - std::exp(-1.0f /(0.05 * float(sampleRate)));
+    
+    // waiting variables determine how long to hold ducking until fading back in
+    wait = 0.0f;
+    waitInc = 1.0 / (0.3f * float(sampleRate)); // 300 ms. At 48 kHz, 0.3 * 48k = 14,400 samples.
+                                                // 300ms corresponds to 14,400 timesteps
+    
+    // Clear out any old sample values from the stereo feedback path
     feedbackL = 0.0f;
     feedbackR = 0.0f;
     
+    // Audio Level Meters
     levelL.reset();
     levelR.reset();
     
@@ -200,10 +216,23 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
         for(int sample = 0; sample < buffer.getNumSamples(); sample++){
             params.smoothen();  // Smooth motion prevents zipper noise
             
-            // Update JUCE::DSP objects
+            // Update Delay Line
             float delayTime = params.tempoSync ? syncedTime : params.delayTime;
-            float delayInSamples = delayTime / 1000.0f * sampleRate;
-            //delayLine.setDelay(delayInSamples);
+            float newTargetDelay = delayTime / 1000.0f * sampleRate;
+            
+            // Decide whether to perform ducking
+            if(newTargetDelay != targetDelay){
+                targetDelay = newTargetDelay;
+                if(delayInSamples == 0.0f)  // first time
+                    delayInSamples = targetDelay;
+                else{ // start fading out & reset wait period
+                    wait       = waitInc; // start counter
+                    fadeTarget = 0.0;  // Initiates fade out & activates one-pole filter
+                }
+                
+            }
+            
+            // Update SVF filters
             if(params.lowCut != lastLowCut) // Only update/modify filter if Cut freq changed from last time
             {
                 lowCutFilter.setCutoffFrequency(params.lowCut);
@@ -233,6 +262,28 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
             float wetL = delayLineL.read(delayInSamples);
             float wetR = delayLineR.read(delayInSamples);
             
+            /* Slowly & smoothly move the value of fade towards fadeTarget
+               Only happens while ducking, otherwise fade stays same value
+             */
+            fade += (fadeTarget - fade) * coeff;   // one-pole filter formula.
+            
+            /* Apply fade as envelope of wet signal.
+             Most of the time fade = 1, and nothing happens to delayed sound
+             However, when we're ducking, the wet signal is suppressed
+            */
+            wetL *= fade;
+            wetR *= fade;
+            
+            if(wait > 0.0f){
+                wait += waitInc;
+                if(wait >= 1.0f){
+                    // Holding period is over. Switch to new delay length and start fading it in
+                    delayInSamples = targetDelay;
+                    wait = 0.0f;
+                    fadeTarget = 1.0f; // fade in
+                }
+            }
+            
             /* Read output from delay line, and:
                 -apply low/high-cut filters
                 -apply feedback gain to get new feedback sample
@@ -254,6 +305,14 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
             float outL = mixL * params.gain;
             float outR = mixR * params.gain;
             
+            /* In Bypass Mode, we still need all the calcualations to create the wet signal to maintain state
+               However, we only output the dry signal
+             */
+            if(params.bypassed){
+                outL = dryL;
+                outR = dryR;
+            }
+            
             // Write the output samples back into the juce::AudioBuffer
             outputDataL[sample] = outL;
             outputDataR[sample] = outR;
@@ -268,7 +327,8 @@ void DelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, [[mayb
              */
             //outputDataL[sample] = params.delayTime / 5000.0f;  // Checks to see how delay time smoothly
             //outputDataR[sample] = params.delayTime/ 5000.0f;   // transitions
-            
+            //outputDataL[sample] = fade;     // CHeck to see how delay Line fades
+            //outputDataR[sample] = fade;
         }
         
         levelL.updateIfGreater(maxL);
@@ -308,6 +368,11 @@ bool DelayAudioProcessor::hasEditor() const
 juce::AudioProcessorEditor* DelayAudioProcessor::createEditor()
 {
     return new DelayAudioProcessorEditor (*this);
+}
+
+//==============================================================================
+juce::AudioProcessorParameter* DelayAudioProcessor::getBypassParameter() const{
+    return params.bypassParam;
 }
 
 //==============================================================================

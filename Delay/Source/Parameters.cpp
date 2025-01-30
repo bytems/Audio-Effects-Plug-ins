@@ -79,6 +79,7 @@ Parameters::Parameters(juce::AudioProcessorValueTreeState& apvts)
     castParameter(apvts, highCutParamID, highCutParam);
     castParameter(apvts, tempoSyncParamID, tempoSyncParam);
     castParameter(apvts, delayNoteParamID, delayNoteParam);
+    castParameter(apvts, bypassParamID, bypassParam);
 }
 
 //==============================================================================
@@ -148,6 +149,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout Parameters::createParameterL
                            .withValueFromStringFunction(hzFromString)
                     ));
     layout.add(std::make_unique<juce::AudioParameterBool>(tempoSyncParamID,"Tympo Sync",false));
+    layout.add(std::make_unique<juce::AudioParameterBool>(bypassParamID, "Bypass", false));
     
     juce::StringArray noteLengths{"1/32","1/16 trip", "1/32 dot", "1/16", "1/8 trip", "1/16 dot",
                                   "1/8", "1/4 trip",  "1/8 dot",  "1/4",  "1/2 trip", "1/4 dot",
@@ -229,6 +231,8 @@ void Parameters::update() noexcept
     
     delayNote = delayNoteParam->getIndex();
     tempoSync = tempoSyncParam->get();
+    
+    bypassed = bypassParam->get();
 }
 
 // Called once per sample
@@ -249,5 +253,6 @@ void Parameters::smoothen() noexcept
      With every timestep the distance between currentValue & targetValue become smaller & the movement slows
      down.Exponential shape: Starts out fast but the steps become smaller & smaller
      */
-    delayTime += (targetDelayTime - delayTime) * coeff;
+    //delayTime += (targetDelayTime - delayTime) * coeff;
+    delayTime = targetDelayTime;  // Turn off parameter smoothing since it interferes with ducking
 }

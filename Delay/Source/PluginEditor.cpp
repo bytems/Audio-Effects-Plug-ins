@@ -47,6 +47,16 @@ DelayAudioProcessorEditor::DelayAudioProcessorEditor (DelayAudioProcessor& p)
     // Parameters that Editor should listen to should be registered
     audioProcessor.params.tempoSyncParam->addListener(this);
     
+    // Bypass- Creates a 20x20 pixel button that draws the Bypass.png image
+    auto bypassIcon = juce::ImageCache::getFromMemory(BinaryData::Bypass_png, BinaryData::Bypass_pngSize);
+    bypassButton.setClickingTogglesState(true);
+    bypassButton.setBounds(0, 0, 20, 20);
+    bypassButton.setImages(false, true, true,
+                           bypassIcon, 1.0f, juce::Colours::white,  // normal state
+                           bypassIcon, 1.0f, juce::Colours::white,  // highlighted state
+                           bypassIcon, 1.0f, juce::Colours::grey,   // pressed down state
+                           0.0f);
+    addAndMakeVisible(bypassButton);
     
     setLookAndFeel(&mainLF);
     
@@ -115,6 +125,9 @@ void DelayAudioProcessorEditor::resized()
     mixKnob.setTopLeftPosition(20, 20);
     gainKnob.setTopLeftPosition(mixKnob.getX(), mixKnob.getBottom() + 10);
     meter.setBounds(outputGroup.getWidth() - 45, 30, 30, gainKnob.getBottom() - 30);
+    
+    // Position the bypass button in the top right corner
+    bypassButton.setTopLeftPosition(bounds.getRight() - bypassButton.getWidth() - 10, 10);
 }
 
 /**
