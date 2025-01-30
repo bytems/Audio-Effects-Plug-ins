@@ -1,5 +1,5 @@
 # Summary
-This repository is a collection of audio effects plugins implemented from the explanations in the book *"The Complete Beginner's Guid to Audio Plug-in Development"* by Matthijs Hollemans, and takes as example the code provided with the book.
+This repository is a collection of audio effects plugins implemented from the explanations in the book *"The Complete Beginner's Guid to Audio Plug-in Development"* by Matthijs Hollemans.
 
 The audio effects implemented are:
 
